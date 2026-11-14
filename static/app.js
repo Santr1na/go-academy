@@ -271,7 +271,7 @@
 
   // pull читает прогресс с сервера и запоминает его ревизию.
   function pull() {
-    return fetch('/api/progress', { cache: 'no-store' }).then(function (r) {
+    return fetch('api/progress', { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     }).then(function (d) {
@@ -309,7 +309,7 @@
       sync.snapshot = false;
       setSync('saving');
       writeLocal();
-      return fetch('/api/progress?base=' + encodeURIComponent(sync.rev) + (snap ? '&snapshot=1' : ''), {
+      return fetch('api/progress?base=' + encodeURIComponent(sync.rev) + (snap ? '&snapshot=1' : ''), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.p)
       }).then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) {
@@ -376,7 +376,7 @@
     writeLocal();
     if (sync.dirty && sync.loaded && !sync.inflight && navigator.sendBeacon) {
       clearTimeout(sync.timer);
-      navigator.sendBeacon('/api/progress?base=' + encodeURIComponent(sync.rev), new Blob([JSON.stringify(S.p)], { type: 'application/json' }));
+      navigator.sendBeacon('api/progress?base=' + encodeURIComponent(sync.rev), new Blob([JSON.stringify(S.p)], { type: 'application/json' }));
     }
   });
   document.addEventListener('visibilitychange', function () {
@@ -761,7 +761,7 @@
       location.hash = '#/';
     });
     renderSidebar(null);
-    if (!S.health) api('/api/health').then(function (hh) { S.health = hh; if (location.hash.indexOf('settings') >= 0) viewSettings(); }).catch(function () {});
+    if (!S.health) api('api/health').then(function (hh) { S.health = hh; if (location.hash.indexOf('settings') >= 0) viewSettings(); }).catch(function () {});
   }
 
   // ------------------------------------------------------------------ Задачи с собеседований
@@ -812,7 +812,7 @@
       return;
     }
     if (S.p.lastLesson !== id) { S.p.lastLesson = id; S.p.lastAt = Date.now(); save(); }
-    var p = S.lessons[id] ? Promise.resolve(S.lessons[id]) : api('/api/lessons/' + encodeURIComponent(id)).then(function (l) { S.lessons[id] = l; return l; });
+    var p = S.lessons[id] ? Promise.resolve(S.lessons[id]) : api('api/lessons/' + encodeURIComponent(id)).then(function (l) { S.lessons[id] = l; return l; });
     if (!S.lessons[id]) $('#main').innerHTML = '<div class="loading">Загрузка урока…</div>';
     p.then(function (lesson) { if (S.active === id) renderLesson(lesson, meta, tab); })
       .catch(function (e) {
@@ -1027,7 +1027,7 @@
     var track = lessonId && S.byId[lessonId] ? S.byId[lessonId].track : S.track;
     if (!track.cardsCache) {
       $('#main').innerHTML = '<div class="loading">Загрузка вопросов…</div>';
-      api('/api/tracks/' + encodeURIComponent(track.id) + '/cards').then(function (r) {
+      api('api/tracks/' + encodeURIComponent(track.id) + '/cards').then(function (r) {
         track.cardsCache = r.cards;
         if (/^#\/drill/.test(location.hash)) viewDrill(lessonId);
       }).catch(function (e) { $('#main').innerHTML = '<div class="empty"><h2>Не удалось загрузить вопросы</h2><p class="muted">' + esc(e.message) + '</p></div>'; });
@@ -1251,7 +1251,7 @@
         return;
       }
       if (!st.solved && !st.solutionShown && !confirm('Если посмотреть решение до самостоятельного решения, за задачу будет начислено только ' + Math.round(SOLUTION_FACTOR * 100) + '% XP. Показать?')) return;
-      api('/api/tasks/' + encodeURIComponent(task.id) + '/solution').then(function (r) {
+      api('api/tasks/' + encodeURIComponent(task.id) + '/solution').then(function (r) {
         if (!st.solved && !st.solutionShown) { st.solutionShown = true; save(); }
         refreshMeta();
         box.innerHTML = '<div class="solution"><div class="solution-head"><b>' + icon('eye', 16) + 'Эталонное решение</b><button class="btn small" data-act="paste">Вставить в редактор</button></div>' +
@@ -1270,7 +1270,7 @@
       outEl.innerHTML = '<div class="output run"><div class="output-head"><span class="spinner"></span><span>' + (mode === 'run' ? L.running : 'Проверка…') + '</span></div></div>';
       ed.setErrorLines([]);
       var code = ed.getValue();
-      api(mode === 'run' ? '/api/run' : '/api/check', { taskId: task.id, code: code }).then(function (res) {
+      api(mode === 'run' ? 'api/run' : 'api/check', { taskId: task.id, code: code }).then(function (res) {
         renderOutput(outEl, res, mode, L);
         ed.setErrorLines(errorLines((res.stdout || '') + '\n' + (res.stderr || ''), L));
         if (mode !== 'check') return;
@@ -1476,7 +1476,7 @@
   applyTheme();
   renderSync();
   Promise.all([
-    api('/api/course'),
+    api('api/course'),
     pull().catch(function () { return undefined; })
   ]).then(function (res) {
     S.tracks = res[0].tracks;
