@@ -707,16 +707,25 @@
       offline: '<span class="warn-text">сервер недоступен, изменения ждут в браузере</span>'
     }[sync.state];
     var file = S.health && S.health.progressFile ? esc(S.health.progressFile) : 'data/progress.json';
+    var pub = S.health && S.health.public;
+    var whereText = pub
+      ? 'В этом браузере и на сервере (' + syncText + '). Прогресс привязан к коду ниже: сохраните его, чтобы продолжить на другом устройстве или после очистки данных браузера.'
+      : 'В этом браузере и в файле на компьютере: <code>' + file + '</code> (' + syncText + '). ' +
+        'Очистка кэша или данных сайта прогресс не сбрасывает — он восстановится из файла. Раз в день и перед каждым сбросом сервер сохраняет резервную копию в папку <code>backups</code> рядом с файлом.';
+    var codeRow = pub
+      ? '<div class="settings-row"><div><b>Код прогресса</b><div class="muted">Ваш код: <code id="userCode">' + esc(S.health.userCode) + '</code>. ' +
+        'Чтобы продолжить прогресс с другого устройства, введите его код — текущий прогресс в этом браузере заменится.</div></div>' +
+        '<div class="row-actions"><input id="userCodeInput" class="input" placeholder="abcd-efgh-ijkl-mnop" maxlength="24" spellcheck="false" autocomplete="off"><button class="btn" id="userCodeBtn">Войти</button></div></div>'
+      : '';
     $('#main').innerHTML = '<h1>Настройки</h1><div class="card settings">' +
       '<div class="settings-row"><div><b>Тема</b><div class="muted">«Авто» следует настройке системы</div></div><div class="seg">' + seg('auto', 'Авто') + seg('dark', 'Тёмная') + seg('light', 'Светлая') + '</div></div>' +
       '<div class="settings-row"><div><b>Свободный режим</b><div class="muted">Открыть все уроки сразу, без последовательной разблокировки</div></div>' +
       '<label class="switch"><input type="checkbox" id="freeMode"' + (S.p.settings.freeMode ? ' checked' : '') + '><span></span><em>Включить</em></label></div>' +
       '<div class="settings-row"><div><b>Где хранится прогресс</b>' +
-      '<div class="muted">В этом браузере и в файле на компьютере: <code>' + file + '</code> (' + syncText + '). ' +
-      'Очистка кэша или данных сайта прогресс не сбрасывает — он восстановится из файла. Раз в день и перед каждым сбросом сервер сохраняет резервную копию в папку <code>backups</code> рядом с файлом.</div></div></div>' +
+      '<div class="muted">' + whereText + '</div></div></div>' + codeRow +
       '<div class="settings-row"><div><b>Резервная копия вручную</b><div class="muted">Сохранить прогресс в файл или загрузить его из файла (заменит текущий)</div></div>' +
       '<div class="row-actions"><button class="btn" id="exportBtn">' + icon('download', 16) + 'Экспорт</button><label class="btn">' + icon('upload', 16) + 'Импорт<input type="file" id="importFile" accept="application/json,.json" hidden></label></div></div>' +
-      '<div class="settings-row"><div><b>Сбросить прогресс</b><div class="muted">Удалит XP, решённые задачи, ответы и сохранённый код. Копия останется в папке <code>backups</code></div></div>' +
+      '<div class="settings-row"><div><b>Сбросить прогресс</b><div class="muted">Удалит XP, решённые задачи, ответы и сохранённый код.' + (pub ? '' : ' Копия останется в папке <code>backups</code>') + '</div></div>' +
       '<button class="btn danger" id="resetBtn">' + icon('trash', 16) + 'Сбросить всё</button></div>' +
       '</div>';
     $$('[data-theme-set]').forEach(function (b) {
@@ -748,6 +757,19 @@
         lastRank = null;
         save(true); applyTheme(); renderRank(); toast('Прогресс импортирован', 'ok'); viewSettings();
       }).catch(function (err) { toast('Ошибка импорта: ' + esc(err.message), 'bad', 5000); });
+    });
+    if (pub) $('#userCodeBtn').addEventListener('click', function () {
+      var code = $('#userCodeInput').value.trim();
+      if (!code) return;
+      if (!confirm('Продолжить с прогрессом этого кода? Текущий прогресс в браузере заменится (он останется под вашим старым кодом).')) return;
+      api('api/user', { code: code }).then(function () {
+        // Старый прогресс не должен уйти на сервер под новым кодом: отключаем
+        // сохранение (обработчики выхода со страницы проверяют S.p) и чистим браузер.
+        clearTimeout(sync.timer);
+        S.p = null;
+        try { localStorage.removeItem(LS_KEY); } catch (e) { /* нет доступа к хранилищу */ }
+        location.reload();
+      }).catch(function (err) { toast('Ошибка: ' + esc(err.message), 'bad', 5000); });
     });
     $('#resetBtn').addEventListener('click', function () {
       if (!confirm('Точно сбросить весь прогресс?')) return;

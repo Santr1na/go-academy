@@ -67,18 +67,27 @@ func main() {
 
 	// Сервер исполняет присланный код. Если он доступен не только с этого
 	// компьютера, вход обязательно закрывается паролем.
+	// Открытый режим (ACADEMY_PUBLIC=1) — без пароля, но только с песочницей:
+	// код посетителей выполняется от имени отдельного пользователя без прав.
 	password := os.Getenv("ACADEMY_PASSWORD")
-	if !isLoopbackAddr(*addr) && len(password) < 8 {
+	public := envBool("ACADEMY_PUBLIC")
+	if !isLoopbackAddr(*addr) && !public && len(password) < 8 {
 		log.Fatalf("сервер будет доступен из сети (%s) и исполняет присланный код: задайте пароль для входа "+
-			"в переменной окружения ACADEMY_PASSWORD (не короче 8 символов)", *addr)
+			"в переменной окружения ACADEMY_PASSWORD (не короче 8 символов) или включите открытый режим "+
+			"ACADEMY_PUBLIC=1 (только в Docker-образе с песочницей)", *addr)
 	}
 	if *sandboxUID >= 0 {
 		if err := enableSandbox(*sandboxUID); err != nil {
-			// Сайт всё равно закрыт паролем, поэтому продолжаем, но предупреждаем.
+			if public && !isLoopbackAddr(*addr) {
+				log.Fatalf("открытый режим без пароля требует песочницы, а она не включилась: %v", err)
+			}
+			// Сайт закрыт паролем или доступен только с этого компьютера — продолжаем, но предупреждаем.
 			log.Printf("ВНИМАНИЕ: песочница не включена (%v); код учеников выполняется с правами сервера", err)
 		} else {
 			log.Printf("Код учеников запускается от имени uid %d", *sandboxUID)
 		}
+	} else if public && !isLoopbackAddr(*addr) {
+		log.Fatalf("открытый режим без пароля требует песочницы: задайте ACADEMY_SANDBOX_UID")
 	}
 
 	runner, err := NewRunner(*timeout, *parallel)
@@ -95,6 +104,9 @@ func main() {
 		runner:   runner,
 		progress: NewProgressStore(*dataDir),
 	}
+	if public {
+		srv.users = NewUserStores(*dataDir)
+	}
 
 	mux := http.NewServeMux()
 	srv.Routes(mux)
@@ -105,7 +117,11 @@ func main() {
 		log.Printf("Курс %-10s модулей %2d, уроков %2d, задач %3d, вопросов %3d, карточек %3d", t.Title+":", st.Modules, st.Lessons, st.Tasks, st.Questions, st.Cards)
 	}
 	log.Printf("go = %s (%s); java = %s; python = %s; git = %s", runner.GoBin, runner.GoVersion, orNone(runner.Tools.JavaVersion), orNone(runner.Tools.Python), orNone(runner.Tools.Git))
-	log.Printf("Прогресс хранится в %s (резервные копии — в подкаталоге backups)", srv.progress.Path())
+	if public {
+		log.Printf("Открытый режим: у каждого посетителя свой прогресс в %s", srv.users.dir)
+	} else {
+		log.Printf("Прогресс хранится в %s (резервные копии — в подкаталоге backups)", srv.progress.Path())
+	}
 	log.Printf("Сервер слушает %s", *addr)
 
 	var handler http.Handler = srv.guard(mux)

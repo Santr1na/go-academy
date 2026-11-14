@@ -78,6 +78,8 @@ h4, h5 { font-size: 16px; margin: 20px 0 6px; }
 .badge.soft { background: var(--warn-bg); color: var(--warn); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .row-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.input { font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: inherit; min-width: 0; width: 210px; max-width: 100%; }
+.input:focus { outline: 2px solid color-mix(in srgb, var(--accent, #00add8) 60%, transparent); outline-offset: 1px; }
 .row-actions.center { justify-content: center; }
 
 /* ---------- Шапка ---------- */

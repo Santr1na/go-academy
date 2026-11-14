@@ -25,6 +25,7 @@ type Server struct {
 	dev      bool
 	runner   *Runner
 	progress *ProgressStore
+	users    *UserStores // не nil в открытом режиме: у каждого посетителя свой прогресс
 }
 
 func (s *Server) Routes(mux *http.ServeMux) {
@@ -36,11 +37,18 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/check", s.handleCheck)
 	mux.HandleFunc("GET /api/progress", s.handleGetProgress)
 	mux.HandleFunc("POST /api/progress", s.handleSaveProgress)
+	mux.HandleFunc("POST /api/user", s.handleSetUser)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "go": s.runner.GoVersion, "java": s.runner.Tools.JavaVersion,
-			"tools":        map[string]bool{"java": s.runner.Tools.Javac != "" && s.runner.Tools.Java != "", "sql": s.runner.Tools.Python != "", "git": s.runner.Tools.Git != "" && s.runner.Tools.Bash != ""},
-			"progressFile": s.progress.Path()})
+		h := map[string]any{"ok": true, "go": s.runner.GoVersion, "java": s.runner.Tools.JavaVersion,
+			"tools": map[string]bool{"java": s.runner.Tools.Javac != "" && s.runner.Tools.Java != "", "sql": s.runner.Tools.Python != "", "git": s.runner.Tools.Git != "" && s.runner.Tools.Bash != ""}}
+		if s.users != nil {
+			h["public"] = true
+			h["userCode"] = formatUserCode(userCode(w, r))
+		} else {
+			h["progressFile"] = s.progress.Path()
+		}
+		writeJSON(w, http.StatusOK, h)
 	})
 }
 
@@ -294,7 +302,14 @@ type progressEnvelope struct {
 }
 
 func (s *Server) handleGetProgress(w http.ResponseWriter, r *http.Request) {
-	data, rev, err := s.progress.Load()
+	var data []byte
+	var rev string
+	var err error
+	if s.users != nil {
+		data, rev, err = s.users.Load(userCode(w, r))
+	} else {
+		data, rev, err = s.progress.Load()
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -320,8 +335,16 @@ func (s *Server) handleSaveProgress(w http.ResponseWriter, r *http.Request) {
 	if base == "" {
 		base = "0"
 	}
-	rev, cur, err := s.progress.Save(body, base, q.Get("snapshot") == "1")
+	var rev string
+	var cur []byte
+	if s.users != nil {
+		rev, cur, err = s.users.Save(userCode(w, r), body, base, q.Get("snapshot") == "1")
+	} else {
+		rev, cur, err = s.progress.Save(body, base, q.Get("snapshot") == "1")
+	}
 	switch {
+	case errors.Is(err, ErrTooManyUsers):
+		writeError(w, http.StatusInsufficientStorage, err.Error())
 	case errors.Is(err, ErrConflict):
 		writeJSON(w, http.StatusConflict, progressEnvelope{Error: "conflict", Rev: rev, Progress: cur})
 	case err != nil:
@@ -330,6 +353,29 @@ func (s *Server) handleSaveProgress(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "rev": rev, "savedAt": time.Now().UnixMilli()})
 	}
+}
+
+// handleSetUser: POST /api/user {"code": "..."} — продолжить с прогрессом,
+// сохранённым под этим кодом (например, на другом устройстве).
+func (s *Server) handleSetUser(w http.ResponseWriter, r *http.Request) {
+	if s.users == nil {
+		writeError(w, http.StatusNotFound, "коды прогресса используются только в открытом режиме")
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "неверный запрос")
+		return
+	}
+	code := normalizeUserCode(req.Code)
+	if code == "" {
+		writeError(w, http.StatusBadRequest, "код должен состоять из 16 латинских букв и цифр 2–7, например abcd-efgh-ijkl-mnop")
+		return
+	}
+	setUserCookie(w, r, code)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "userCode": formatUserCode(code)})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

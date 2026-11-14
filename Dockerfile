@@ -3,7 +3,7 @@
 FROM golang:1.27-bookworm
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 ca-certificates \
+ && apt-get install -y --no-install-recommends python3 ca-certificates iptables \
  && rm -rf /var/lib/apt/lists/*
 
 # JDK 21 из официального образа Eclipse Temurin.
@@ -44,6 +44,9 @@ ENV ACADEMY_DATA=/data \
     ACADEMY_SANDBOX_UID=10001
 WORKDIR /data
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 EXPOSE 8080
 ENV PORT=8080
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["academy"]
