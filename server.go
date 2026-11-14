@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"os"
 )
 
 const maxBody = 512 * 1024
@@ -47,7 +48,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 func (s *Server) guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
-			if !isLocalHost(r.Host) {
+			if !isAllowedHost(r.Host) {
 				http.Error(w, "forbidden host", http.StatusForbidden)
 				return
 			}
@@ -79,6 +80,31 @@ func isLocalHost(hostport string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+func isAllowedHost(hostport string) bool {
+    if isLocalHost(hostport) {
+        return true
+    }
+
+    host, _, err := net.SplitHostPort(hostport)
+    if err != nil {
+        host = hostport
+    }
+
+    host = strings.ToLower(strings.Trim(host, "[]"))
+
+    allowedHosts := os.Getenv("ALLOWED_HOSTS")
+
+    for _, allowed := range strings.Split(allowedHosts, ",") {
+        allowed = strings.ToLower(strings.TrimSpace(allowed))
+
+        if allowed != "" && host == allowed {
+            return true
+        }
+    }
+
+    return false
 }
 
 func (s *Server) getCourse() (*Catalog, error) {
