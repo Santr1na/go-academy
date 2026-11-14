@@ -210,7 +210,7 @@ func (r *Runner) finish(ctx context.Context, res *RunResult, c cmdResult, check 
 
 // ------------------------------------------------------------------ Java
 
-var javacFlags = []string{"-J-XX:TieredStopAtLevel=1", "-J-XX:+UseSerialGC", "-J-Xshare:auto", "-J-Duser.language=en", "-encoding", "UTF-8", "-nowarn", "-Xlint:none", "-d", "out"}
+var javacFlags = []string{"-J-XX:TieredStopAtLevel=1", "-J-XX:+UseSerialGC", "-J-Xshare:auto", "-J-Xmx256m", "-J-Duser.language=en", "-encoding", "UTF-8", "-nowarn", "-Xlint:none", "-d", "out"}
 
 func (r *Runner) execJava(ctx context.Context, code, test string) *RunResult {
 	return r.session(ctx, func(ctx context.Context, cancel context.CancelFunc, dir string, res *RunResult) {
@@ -226,7 +226,7 @@ func (r *Runner) execJava(ctx context.Context, code, test string) *RunResult {
 			return
 		}
 		var env []string
-		for _, e := range os.Environ() { // иначе JVM печатает «Picked up JAVA_TOOL_OPTIONS»
+		for _, e := range childEnv(os.Environ()) { // иначе JVM печатает «Picked up JAVA_TOOL_OPTIONS»
 			if !strings.HasPrefix(e, "JAVA_TOOL_OPTIONS=") && !strings.HasPrefix(e, "_JAVA_OPTIONS=") && !strings.HasPrefix(e, "JDK_JAVA_OPTIONS=") {
 				env = append(env, e)
 			}
@@ -305,7 +305,7 @@ func (r *Runner) execSQL(ctx context.Context, code string, t *Task, check bool) 
 			res.Stderr = err.Error()
 			return
 		}
-		env := append(os.Environ(), "PYTHONIOENCODING=utf-8", "PYTHONDONTWRITEBYTECODE=1")
+		env := append(childEnv(os.Environ()), "PYTHONIOENCODING=utf-8", "PYTHONDONTWRITEBYTECODE=1")
 		c := r.command(ctx, cmdSpec{dir: dir, env: env, stdin: string(in), mem: true, cancel: cancel}, r.Tools.Python, "-I", "sqlrun.py")
 		res.Stdout = c.stdout
 		res.Stderr = cleanOutput(c.stderr, dir)
@@ -352,7 +352,7 @@ func (r *Runner) execGit(ctx context.Context, code string, t *Task, check bool) 
 			return
 		}
 		var env []string
-		for _, e := range os.Environ() {
+		for _, e := range childEnv(os.Environ()) {
 			if !strings.HasPrefix(e, "GIT_") && !strings.HasPrefix(e, "LC_") && !strings.HasPrefix(e, "LANG") {
 				env = append(env, e)
 			}

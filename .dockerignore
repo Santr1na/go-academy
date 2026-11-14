@@ -1,0 +1,6 @@
+.git
+data
+*.md
+!README.md
+Dockerfile
+render.yaml

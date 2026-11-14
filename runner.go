@@ -98,7 +98,7 @@ func NewRunner(timeout time.Duration, parallel int) (*Runner, error) {
 		r.GoVersion = m[1]
 	}
 
-	env := os.Environ()
+	env := childEnv(os.Environ())
 	env = append(env,
 		"GOTOOLCHAIN=local", // не скачивать другие версии тулчейна
 		"GOPROXY=off",       // никаких сетевых запросов за модулями

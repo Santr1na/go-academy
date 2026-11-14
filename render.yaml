@@ -1,0 +1,20 @@
+# Blueprint для Render: https://render.com/docs/blueprint-spec
+# Render → New → Blueprint → выберите этот репозиторий. При создании он
+# попросит ввести значение ACADEMY_PASSWORD — это пароль для входа на сайт.
+services:
+  - type: web
+    name: academy
+    runtime: docker
+    plan: free            # для постоянного хранения прогресса нужен платный тариф и диск (см. ниже)
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ACADEMY_PASSWORD
+        sync: false       # секрет: вводится в панели Render, в репозиторий не попадает
+      - key: ACADEMY_PARALLEL
+        value: "1"        # на бесплатном тарифе 512 МБ памяти — проверяем по одной задаче
+    # Постоянный диск (только на платных тарифах): прогресс переживёт перезапуски.
+    # disk:
+    #   name: academy-data
+    #   mountPath: /data
+    #   sizeGB: 1

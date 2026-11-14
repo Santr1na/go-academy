@@ -263,7 +263,11 @@ public class Checker {
         T.test("круг", () -> { Shape s = new Circle(1); T.eq(Math.PI, s.area()); T.eq("Circle: 3.14", s.describe()); });
         T.test("прямоугольник", () -> { Shape s = new Rect(2, 3.5); T.eq(7.0, s.area()); T.eq("Rect: 7.00", s.describe()); });
         T.test("describe написан только в Shape", () -> {
-            T.eq(Shape.class, Circle.class.getMethod("describe").getDeclaringClass() == Shape.class ? Shape.class : Circle.class.getDeclaredMethod("describe").getDeclaringClass());
+            for (Class<?> c : new Class<?>[]{ Circle.class, Rect.class }) {
+                boolean own = true;
+                try { c.getDeclaredMethod("describe"); } catch (NoSuchMethodException e) { own = false; }
+                T.check(!own, c.getSimpleName() + " не должен переопределять describe()");
+            }
         });
         T.test("полиморфизм через массив", () -> {
             Shape[] arr = { new Circle(2), new Rect(1, 1) };

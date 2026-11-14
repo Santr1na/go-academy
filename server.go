@@ -9,10 +9,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
-	"os"
 )
 
 const maxBody = 512 * 1024
@@ -36,6 +36,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/check", s.handleCheck)
 	mux.HandleFunc("GET /api/progress", s.handleGetProgress)
 	mux.HandleFunc("POST /api/progress", s.handleSaveProgress)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "go": s.runner.GoVersion, "java": s.runner.Tools.JavaVersion,
 			"tools":        map[string]bool{"java": s.runner.Tools.Javac != "" && s.runner.Tools.Java != "", "sql": s.runner.Tools.Python != "", "git": s.runner.Tools.Git != "" && s.runner.Tools.Bash != ""},
@@ -83,28 +84,29 @@ func isLocalHost(hostport string) bool {
 }
 
 func isAllowedHost(hostport string) bool {
-    if isLocalHost(hostport) {
-        return true
-    }
+	if isLocalHost(hostport) {
+		return true
+	}
 
-    host, _, err := net.SplitHostPort(hostport)
-    if err != nil {
-        host = hostport
-    }
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		host = hostport
+	}
 
-    host = strings.ToLower(strings.Trim(host, "[]"))
+	host = strings.ToLower(strings.Trim(host, "[]"))
 
-    allowedHosts := os.Getenv("ALLOWED_HOSTS")
+	// Render сам сообщает внешний адрес сервиса.
+	allowedHosts := os.Getenv("ALLOWED_HOSTS") + "," + os.Getenv("RENDER_EXTERNAL_HOSTNAME")
 
-    for _, allowed := range strings.Split(allowedHosts, ",") {
-        allowed = strings.ToLower(strings.TrimSpace(allowed))
+	for _, allowed := range strings.Split(allowedHosts, ",") {
+		allowed = strings.ToLower(strings.TrimSpace(allowed))
 
-        if allowed != "" && host == allowed {
-            return true
-        }
-    }
+		if allowed != "" && host == allowed {
+			return true
+		}
+	}
 
-    return false
+	return false
 }
 
 func (s *Server) getCourse() (*Catalog, error) {

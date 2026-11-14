@@ -29,7 +29,7 @@ def strip_comments(s):
 
 
 def connect(setup):
-    con = sqlite3.connect(":memory:")
+    con = sqlite3.connect(":memory:", isolation_level=None)  # транзакциями управляет сам ученик
     con.execute("PRAGMA foreign_keys = ON")
     con.executescript(setup)
     con.commit()
