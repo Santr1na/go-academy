@@ -24,7 +24,14 @@ var contentFS embed.FS
 var tracksEmbed embed.FS
 
 func main() {
-	addr := flag.String("addr", "127.0.0.1:8080", "адрес для прослушивания (по умолчанию только localhost)")
+	port := os.Getenv("PORT")
+    defaultAddr := "127.0.0.1:8080"
+
+    if port != "" {
+        defaultAddr = "0.0.0.0:" + port
+    }
+
+    addr := flag.String("addr", defaultAddr, "адрес для прослушивания")
 	dataDir := flag.String("data", "data", "каталог для хранения прогресса (progress.json)")
 	dev := flag.Bool("dev", false, "режим разработки: читать content/ и static/ с диска и перечитывать уроки при каждом запросе")
 	timeout := flag.Duration("timeout", 15*time.Second, "лимит времени на сборку и запуск одной программы")
