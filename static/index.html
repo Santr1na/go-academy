@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Academy — Go, Java, SQL, Git, Spring Boot</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2300ADD8'/%3E%3Ctext x='32' y='43' font-family='Arial' font-weight='700' font-size='28' text-anchor='middle' fill='white'%3EGo%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // Применяем тему как можно раньше, чтобы не было «мигания».
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem('goacademy.progress') || '{}');
+        var t = (p.settings && p.settings.theme) || 'auto';
+        if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn only-mobile" id="menuBtn" aria-label="Меню" data-icon="menu"></button>
+    <a href="#/" class="logo"><span class="logo-mark" id="logoMark">Go</span><span class="logo-text">Academy</span></a>
+    <div class="track-switch" id="trackSwitch"></div>
+    <span class="top-spacer"></span>
+    <a href="#/" class="rank" id="rankBox" title="Ваш ранг и опыт">
+      <span class="rank-ring">
+        <svg class="ring" viewBox="0 0 36 36" width="34" height="34" aria-hidden="true">
+          <circle class="ring-bg" cx="18" cy="18" r="15.9155"/>
+          <circle class="ring-fg" id="rankRing" cx="18" cy="18" r="15.9155" stroke-dasharray="0 100"/>
+        </svg>
+        <span class="rank-icon" id="rankIcon">🌱</span>
+      </span>
+      <span class="rank-text"><span class="rank-name" id="rankName">Новичок</span><span class="rank-xp" id="rankXP">0 XP</span></span>
+    </a>
+    <nav class="top-actions" aria-label="Разделы">
+      <a href="#/interview" class="icon-btn" data-nav="interview" title="Задачи с собеседований" aria-label="Задачи с собеседований" data-icon="target"></a>
+      <button class="icon-btn" id="themeBtn" title="Сменить тему" aria-label="Сменить тему" data-icon="moon"></button>
+      <a href="#/settings" class="icon-btn" data-nav="settings" title="Настройки" aria-label="Настройки" data-icon="sliders"></a>
+    </nav>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav id="sidebar" aria-label="Содержание курса"></nav>
+      <div class="sync init" id="syncBox"></div>
+    </aside>
+    <div class="backdrop" id="backdrop"></div>
+    <main class="main" id="main">
+      <div class="loading">Загрузка курса…</div>
+    </main>
+  </div>
+  <div class="toasts" id="toasts"></div>
+  <script src="markdown.js"></script>
+  <script src="editor.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
